@@ -32,7 +32,7 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
                         Courses to Study
                     </h2>
-                    <button class="btn btn-ghost btn-icon btn-sm" title="Manage Courses">
+                    <button class="btn btn-ghost btn-icon btn-sm" id="btn-manage-courses" title="Manage Courses">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
                 </header>
@@ -125,6 +125,59 @@
             </div>
         </div>
 
+    </div>
+</div>
+
+<!-- Course Management Modal -->
+<div class="modal-overlay" id="course-modal">
+    <div class="modal">
+        <div class="modal__header">
+            <h3 class="modal__title">Manage Courses</h3>
+            <button class="btn btn-ghost btn-icon btn-sm" id="btn-close-modal">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div class="modal__body">
+            <form id="course-form">
+                <div class="form-group">
+                    <label class="form-label">Course Name</label>
+                    <input type="text" id="course-name" class="form-input" required placeholder="e.g. Linear Algebra">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Color</label>
+                        <input type="color" id="course-color" class="form-input-color" value="#6366f1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Priority</label>
+                        <select id="course-priority" class="form-select">
+                            <option value="3">High</option>
+                            <option value="2" selected>Medium</option>
+                            <option value="1">Low</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Weekly Hours Goal</label>
+                        <input type="number" id="course-hours" class="form-input" required min="1" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">End Date (optional)</label>
+                        <input type="date" id="course-date" class="form-input">
+                    </div>
+                </div>
+                <div class="modal__footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-course">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Course</button>
+                </div>
+            </form>
+            <div class="divider"></div>
+            <h4 class="form-label" style="margin-bottom: var(--space-2)">Current Courses</h4>
+            <div id="modal-course-list" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Filled via JS -->
+            </div>
+        </div>
     </div>
 </div>
 

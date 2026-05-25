@@ -42,6 +42,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const statTotalTime = document.getElementById('stat-total-time');
     const statBlocks = document.getElementById('stat-blocks');
 
+    const btnManageCourses = document.getElementById('btn-manage-courses');
+    const courseModal = document.getElementById('course-modal');
+    const btnCloseModal = document.getElementById('btn-close-modal');
+    const btnCancelCourse = document.getElementById('btn-cancel-course');
+    const courseForm = document.getElementById('course-form');
+    const modalCourseList = document.getElementById('modal-course-list');
+
     // --- Initialization ---
     init();
 
@@ -67,6 +74,16 @@ document.addEventListener('DOMContentLoaded', () => {
         btnGenerate.addEventListener('click', handleGenerate);
         btnReset.addEventListener('click', handleReset);
         btnSave.addEventListener('click', () => showToast('Schedule saved successfully!', 'success'));
+        
+        btnManageCourses.addEventListener('click', openCourseModal);
+        btnCloseModal.addEventListener('click', closeCourseModal);
+        btnCancelCourse.addEventListener('click', closeCourseModal);
+        courseForm.addEventListener('submit', handleAddCourse);
+        
+        // Close modal on outside click
+        courseModal.addEventListener('click', (e) => {
+            if (e.target === courseModal) closeCourseModal();
+        });
         
         // Handle dragging on availability grid to paint multiple cells
         let isDragging = false;
@@ -107,6 +124,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- UI Rendering ---
+
+    function openCourseModal() {
+        renderModalCourseList();
+        courseModal.classList.add('active');
+    }
+
+    function closeCourseModal() {
+        courseModal.classList.remove('active');
+        courseForm.reset();
+        document.getElementById('course-color').value = '#6366f1';
+    }
+
+    function handleAddCourse(e) {
+        e.preventDefault();
+        const newCourse = {
+            id: Date.now(), // Generate a temporary ID
+            name: document.getElementById('course-name').value,
+            color: document.getElementById('course-color').value,
+            priority: parseInt(document.getElementById('course-priority').value),
+            weekly_hours_goal: parseInt(document.getElementById('course-hours').value),
+            end_date: document.getElementById('course-date').value || '2026-12-31'
+        };
+        
+        courses.push(newCourse);
+        renderCourseList();
+        renderModalCourseList();
+        courseForm.reset();
+        document.getElementById('course-color').value = '#6366f1';
+        showToast('Course added successfully!', 'success');
+    }
+
+    function renderModalCourseList() {
+        modalCourseList.innerHTML = '';
+        if (courses.length === 0) {
+            modalCourseList.innerHTML = '<div style="font-size: var(--fs-xs); color: var(--text-tertiary);">No courses yet. Add one above.</div>';
+            return;
+        }
+
+        courses.forEach(course => {
+            const html = `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px; background: var(--bg-secondary); border-radius: var(--radius-sm); border: 1px solid var(--glass-border);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${course.color}"></div>
+                        <span style="font-size: var(--fs-sm); font-weight: var(--fw-medium);">${course.name}</span>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-icon btn-sm" onclick="window.deleteCourse(${course.id})" style="color: var(--color-danger);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
+            `;
+            modalCourseList.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    // Expose delete function to window so it can be called from inline onclick
+    window.deleteCourse = function(id) {
+        courses = courses.filter(c => c.id !== id);
+        renderCourseList();
+        renderModalCourseList();
+        showToast('Course deleted', 'info');
+    };
 
     function renderCourseList() {
         courseListContainer.innerHTML = '';
