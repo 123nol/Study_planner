@@ -139,6 +139,39 @@
     z-index: 2;
 }
 
+.schedule-block.is-dragging {
+    opacity: 0.8;
+    z-index: 100 !important;
+    transform: scale(1.02);
+    box-shadow: var(--shadow-lg);
+    cursor: grabbing !important;
+}
+
+.schedule-block__drag-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 15px;
+    cursor: grab;
+    z-index: 10;
+}
+
+.schedule-block__drag-handle:active {
+    cursor: grabbing;
+}
+
+.schedule-block__resize-handle {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 10px;
+    cursor: ns-resize;
+    z-index: 10;
+}
+
+
 .schedule-block__title {
     font-weight: var(--fw-semibold);
     white-space: nowrap;

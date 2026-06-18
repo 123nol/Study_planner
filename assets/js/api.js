@@ -61,6 +61,13 @@ const API = {
                 availability,
                 preferences
             });
+        },
+
+        async save(blocks) {
+            return await API.request('schedule.php', 'POST', {
+                action: 'save',
+                blocks
+            });
         }
     }
 };

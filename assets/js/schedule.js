@@ -10,6 +10,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let courses = [];
     let scheduleBlocks = [];
     
+    let dragState = {
+        blockEl: null,
+        blockId: null,
+        isResizing: false,
+        startY: 0,
+        startTop: 0,
+        startHeight: 0,
+        originalCol: null,
+        currentCol: null
+    };
+
     // 2D Array: availability[day][hour] = boolean
     // Initialize 7 days, 24 hours, all false by default
     let availability = Array(7).fill().map(() => Array(24).fill(false));
@@ -73,7 +84,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function attachEventListeners() {
         btnGenerate.addEventListener('click', handleGenerate);
         btnReset.addEventListener('click', handleReset);
-        btnSave.addEventListener('click', () => showToast('Schedule saved successfully!', 'success'));
+        btnSave.addEventListener('click', async () => {
+            const originalText = btnSave.innerHTML;
+            btnSave.innerHTML = `<div class="spinner" style="margin: 0 auto; border-color: rgba(255,255,255,0.3); border-top-color: white;"></div>`;
+            btnSave.disabled = true;
+
+            try {
+                const response = await API.schedule.save(scheduleBlocks);
+                showToast(response.message || 'Schedule saved successfully!', 'success');
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                btnSave.innerHTML = originalText;
+                btnSave.disabled = false;
+            }
+        });
         
         btnManageCourses.addEventListener('click', openCourseModal);
         btnCloseModal.addEventListener('click', closeCourseModal);
@@ -121,6 +146,11 @@ document.addEventListener('DOMContentLoaded', () => {
         window.addEventListener('mouseup', () => {
             isDragging = false;
         });
+
+        // Drag and Drop Schedule Blocks
+        calendarGrid.addEventListener('mousedown', handleBlockMouseDown);
+        document.addEventListener('mousemove', handleBlockMouseMove);
+        document.addEventListener('mouseup', handleBlockMouseUp);
     }
 
     // --- UI Rendering ---
@@ -347,6 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const blockEl = document.createElement('div');
             blockEl.className = 'schedule-block';
+            blockEl.dataset.id = block.id;
             blockEl.style.top = `${topOffset}px`;
             blockEl.style.height = `${height}px`;
             blockEl.style.backgroundColor = `${block.color}20`; // 20 hex = 12% opacity
@@ -356,13 +387,17 @@ document.addEventListener('DOMContentLoaded', () => {
             // Calculate font sizes based on height
             if (height >= 45) {
                 blockEl.innerHTML = `
+                    <div class="schedule-block__drag-handle"></div>
                     <div class="schedule-block__title">${block.label}</div>
                     <div class="schedule-block__time">${block.start_time} - ${block.end_time}</div>
+                    <div class="schedule-block__resize-handle"></div>
                 `;
             } else {
                 // Compact view
                 blockEl.innerHTML = `
+                    <div class="schedule-block__drag-handle"></div>
                     <div class="schedule-block__title">${block.label}</div>
+                    <div class="schedule-block__resize-handle"></div>
                 `;
             }
 
@@ -375,6 +410,96 @@ document.addEventListener('DOMContentLoaded', () => {
         const mins = totalMinutes % 60;
         statTotalTime.textContent = `${hours}h ${mins > 0 ? mins + 'm' : ''}`;
         statBlocks.textContent = scheduleBlocks.length;
+    }
+
+    // --- Drag and Drop Logic ---
+
+    function handleBlockMouseDown(e) {
+        const dragHandle = e.target.closest('.schedule-block__drag-handle');
+        const resizeHandle = e.target.closest('.schedule-block__resize-handle');
+        
+        if (!dragHandle && !resizeHandle) return;
+
+        const blockEl = e.target.closest('.schedule-block');
+        if (!blockEl) return;
+
+        e.preventDefault(); // Prevent text selection
+        
+        dragState.blockEl = blockEl;
+        dragState.blockId = parseInt(blockEl.dataset.id);
+        dragState.isResizing = !!resizeHandle;
+        dragState.startY = e.clientY;
+        dragState.startTop = parseInt(blockEl.style.top) || 0;
+        dragState.startHeight = parseInt(blockEl.style.height) || 60;
+        dragState.originalCol = blockEl.closest('.calendar__day-column');
+        dragState.currentCol = dragState.originalCol;
+
+        blockEl.classList.add('is-dragging');
+    }
+
+    function handleBlockMouseMove(e) {
+        if (!dragState.blockEl) return;
+
+        const deltaY = e.clientY - dragState.startY;
+
+        if (dragState.isResizing) {
+            // Resize (min height 15px = 15 mins)
+            let newHeight = Math.max(15, dragState.startHeight + deltaY);
+            // Snap to 5 mins (5px)
+            newHeight = Math.round(newHeight / 5) * 5;
+            dragState.blockEl.style.height = `${newHeight}px`;
+        } else {
+            // Move vertically
+            let newTop = dragState.startTop + deltaY;
+            // Snap to 5 mins (5px)
+            newTop = Math.round(newTop / 5) * 5;
+            // Prevent going out of bounds (top limit 0 = 6 AM, bottom limit 1020 = 11 PM)
+            const maxTop = (17 * 60) - parseInt(dragState.blockEl.style.height);
+            newTop = Math.max(0, Math.min(newTop, maxTop));
+            dragState.blockEl.style.top = `${newTop}px`;
+
+            // Handle horizontal move across days
+            // We temporarily hide the dragged element from pointer events so elementFromPoint sees what's under it
+            const oldPointerEvents = dragState.blockEl.style.pointerEvents;
+            dragState.blockEl.style.pointerEvents = 'none';
+            const hoveredCol = document.elementFromPoint(e.clientX, e.clientY)?.closest('.calendar__day-column');
+            dragState.blockEl.style.pointerEvents = oldPointerEvents;
+
+            if (hoveredCol && hoveredCol !== dragState.currentCol) {
+                hoveredCol.appendChild(dragState.blockEl);
+                dragState.currentCol = hoveredCol;
+            }
+        }
+    }
+
+    function handleBlockMouseUp(e) {
+        if (!dragState.blockEl) return;
+
+        dragState.blockEl.classList.remove('is-dragging');
+
+        // Update the underlying scheduleBlocks data array
+        const blockObj = scheduleBlocks.find(b => b.id === dragState.blockId);
+        if (blockObj) {
+            const finalTop = parseInt(dragState.blockEl.style.top) || 0;
+            const finalHeight = parseInt(dragState.blockEl.style.height) || 60;
+            const finalDay = parseInt(dragState.currentCol.dataset.day);
+
+            // Recompute times based on top (pixels = minutes from 6 AM)
+            const totalStartMins = (6 * 60) + finalTop;
+            const totalEndMins = totalStartMins + finalHeight;
+
+            blockObj.day = finalDay;
+            blockObj.duration = finalHeight;
+            blockObj.start_time = `${String(Math.floor(totalStartMins / 60)).padStart(2, '0')}:${String(totalStartMins % 60).padStart(2, '0')}`;
+            blockObj.end_time = `${String(Math.floor(totalEndMins / 60)).padStart(2, '0')}:${String(totalEndMins % 60).padStart(2, '0')}`;
+
+            // If it resized into/out of compact view, or changed times, re-render to ensure text is correct
+            renderScheduleBlocks();
+        }
+
+        // Reset state
+        dragState.blockEl = null;
+        dragState.blockId = null;
     }
 
     function handleReset() {
