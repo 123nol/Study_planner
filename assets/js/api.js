@@ -69,6 +69,21 @@ const API = {
                 blocks
             });
         }
+    },
+
+    auth: {
+        async login(email, password) {
+            return await API.request('auth.php', 'POST', { action: 'login', email, password });
+        },
+        async register(username, email, password) {
+            return await API.request('auth.php', 'POST', { action: 'register', username, email, password });
+        },
+        async logout() {
+            return await API.request('auth.php', 'POST', { action: 'logout' });
+        },
+        async checkSession() {
+            return await API.request('auth.php', 'GET');
+        }
     }
 };
 
