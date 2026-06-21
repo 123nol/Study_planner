@@ -49,6 +49,14 @@ function validateTime(string $time): bool {
 }
 
 /**
+ * Validate a datetime string (Y-m-d H:i format).
+ */
+function validateDateTime(string $dateTime): bool {
+    $dt = DateTime::createFromFormat('Y-m-d H:i', $dateTime);
+    return $dt && $dt->format('Y-m-d H:i') === $dateTime;
+}
+
+/**
  * Validate a hex color string (#RRGGBB).
  */
 function validateHexColor(string $color): bool {

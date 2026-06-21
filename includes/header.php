@@ -16,9 +16,13 @@
     <link rel="stylesheet" href="../assets/css/base.css">
     <link rel="stylesheet" href="../assets/css/layout.css">
     <link rel="stylesheet" href="../assets/css/components.css">
-    
+
     <!-- Page Specific CSS -->
-    <link rel="stylesheet" href="../assets/css/schedule.css">
+    <?php if (!empty($pageCss)): ?>
+        <link rel="stylesheet" href="../assets/css/<?= htmlspecialchars($pageCss, ENT_QUOTES, 'UTF-8') ?>">
+    <?php else: ?>
+        <link rel="stylesheet" href="../assets/css/schedule.css">
+    <?php endif; ?>
 </head>
 <body>
     <div class="app-shell">

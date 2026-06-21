@@ -63,21 +63,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initialization ---
     init();
 
-    function init() {
-        loadMockCourses();
+    async function init() {
+        await loadCourses();
         renderAvailabilityGrid();
         renderCalendarBase();
         attachEventListeners();
     }
 
-    function loadMockCourses() {
-        // Mock data to simulate DB load
-        courses = [
-            { id: 1, name: 'Web Development', color: '#6366f1', priority: 3, weekly_hours_goal: 10, end_date: '2026-06-15' },
-            { id: 2, name: 'Data Structures', color: '#ec4899', priority: 3, weekly_hours_goal: 8, end_date: '2026-06-20' },
-            { id: 3, name: 'Database Systems', color: '#14b8a6', priority: 2, weekly_hours_goal: 6, end_date: '2026-06-10' },
-            { id: 4, name: 'Machine Learning', color: '#f59e0b', priority: 1, weekly_hours_goal: 4, end_date: '2026-07-01' }
-        ];
+    async function loadCourses() {
+        try {
+            const data = await API.courses.list();
+            courses = data.courses || [];
+        } catch (error) {
+            courses = [];
+            showToast('Unable to load courses. Please refresh the page.', 'error');
+        }
         renderCourseList();
     }
 
@@ -166,23 +166,33 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('course-color').value = '#6366f1';
     }
 
-    function handleAddCourse(e) {
+    async function handleAddCourse(e) {
         e.preventDefault();
-        const newCourse = {
-            id: Date.now(), // Generate a temporary ID
-            name: document.getElementById('course-name').value,
+
+        const courseData = {
+            name: document.getElementById('course-name').value.trim(),
             color: document.getElementById('course-color').value,
-            priority: parseInt(document.getElementById('course-priority').value),
-            weekly_hours_goal: parseInt(document.getElementById('course-hours').value),
-            end_date: document.getElementById('course-date').value || '2026-12-31'
+            priority: parseInt(document.getElementById('course-priority').value, 10),
+            weekly_hours_goal: parseInt(document.getElementById('course-hours').value, 10),
+            end_date: document.getElementById('course-date').value || ''
         };
-        
-        courses.push(newCourse);
-        renderCourseList();
-        renderModalCourseList();
-        courseForm.reset();
-        document.getElementById('course-color').value = '#6366f1';
-        showToast('Course added successfully!', 'success');
+
+        if (!courseData.name) {
+            showToast('Course name is required.', 'warning');
+            return;
+        }
+
+        try {
+            const response = await API.courses.create(courseData);
+            const createdCourse = response.course;
+            courses.push(createdCourse);
+            renderCourseList();
+            renderModalCourseList();
+            showToast('Course added successfully!', 'success');
+            closeCourseModal();
+        } catch (error) {
+            showToast(error.message, 'error');
+        }
     }
 
     function renderModalCourseList() {
@@ -209,11 +219,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Expose delete function to window so it can be called from inline onclick
-    window.deleteCourse = function(id) {
-        courses = courses.filter(c => c.id !== id);
-        renderCourseList();
-        renderModalCourseList();
-        showToast('Course deleted', 'info');
+    window.deleteCourse = async function(id) {
+        try {
+            await API.courses.delete(id);
+            courses = courses.filter(c => c.id !== id);
+            renderCourseList();
+            renderModalCourseList();
+            showToast('Course deleted', 'success');
+        } catch (error) {
+            showToast(error.message, 'error');
+        }
     };
 
     function renderCourseList() {

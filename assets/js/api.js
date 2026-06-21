@@ -71,6 +71,79 @@ const API = {
         }
     },
 
+    courses: {
+        async list() {
+            return await API.request('courses.php', 'GET');
+        },
+        async create(course) {
+            return await API.request('courses.php', 'POST', {
+                action: 'create',
+                ...course
+            });
+        },
+        async update(id, course) {
+            return await API.request('courses.php', 'POST', {
+                action: 'update',
+                id,
+                ...course
+            });
+        },
+        async delete(id) {
+            return await API.request('courses.php', 'POST', {
+                action: 'delete',
+                id
+            });
+        }
+    },
+
+    tasks: {
+        async list(filters = {}) {
+            const params = new URLSearchParams();
+            if (filters.status) params.append('status', filters.status);
+            if (filters.course_id) params.append('course_id', filters.course_id);
+            if (filters.priority) params.append('priority', filters.priority);
+            const query = params.toString() ? `?${params.toString()}` : '';
+            return await API.request(`tasks.php${query}`, 'GET');
+        },
+        async create(task) {
+            return await API.request('tasks.php', 'POST', {
+                action: 'create',
+                ...task
+            });
+        },
+        async update(id, task) {
+            return await API.request('tasks.php', 'POST', {
+                action: 'update',
+                id,
+                ...task
+            });
+        },
+        async delete(id) {
+            return await API.request('tasks.php', 'POST', {
+                action: 'delete',
+                id
+            });
+        }
+    },
+
+    reminders: {
+        async list() {
+            return await API.request('reminders.php', 'GET');
+        },
+        async create(reminder) {
+            return await API.request('reminders.php', 'POST', {
+                action: 'create',
+                ...reminder
+            });
+        },
+        async dismiss(id) {
+            return await API.request('reminders.php', 'POST', {
+                action: 'dismiss',
+                id
+            });
+        }
+    },
+
     auth: {
         async login(email, password) {
             return await API.request('auth.php', 'POST', { action: 'login', email, password });
