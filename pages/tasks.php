@@ -108,8 +108,16 @@
                         <input type="datetime-local" id="task-deadline" class="form-input">
                     </div>
                     <div class="form-group" style="flex: 1;">
-                        <label class="form-label">Estimate (min)</label>
-                        <input type="number" id="task-estimate" class="form-input" min="10" value="60">
+                        <label class="form-label">Estimate</label>
+                        <select id="task-estimate" class="form-select">
+                            <option value="15">15 mins</option>
+                            <option value="30">30 mins</option>
+                            <option value="45">45 mins</option>
+                            <option value="60" selected>1 hour</option>
+                            <option value="90">1.5 hours</option>
+                            <option value="120">2 hours</option>
+                            <option value="180">3 hours</option>
+                        </select>
                     </div>
                 </div>
                 <div class="form-group">

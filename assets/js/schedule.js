@@ -1,14 +1,10 @@
-/**
- * ============================================
- * SCHEDULE GENERATOR LOGIC
- * ============================================
- */
-
 document.addEventListener('DOMContentLoaded', () => {
     
     // --- State ---
     let courses = [];
     let scheduleBlocks = [];
+    let tasks = [];
+    let reminders = [];
     
     let dragState = {
         blockEl: null,
@@ -34,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Elements ---
     const btnGenerate = document.getElementById('btn-generate');
+    const btnEmptyGenerate = document.getElementById('btn-empty-generate');
     const btnReset = document.getElementById('btn-reset');
     const btnSave = document.getElementById('btn-save');
     
@@ -65,9 +62,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function init() {
         await loadCourses();
+        await loadTasksAndReminders();
         renderAvailabilityGrid();
         renderCalendarBase();
         attachEventListeners();
+        await loadSavedSchedule();
     }
 
     async function loadCourses() {
@@ -81,8 +80,73 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCourseList();
     }
 
+    async function loadTasksAndReminders() {
+        try {
+            if (typeof API !== 'undefined' && API.tasks && typeof API.tasks.list === 'function') {
+                const data = await API.tasks.list();
+                tasks = data.tasks || [];
+            }
+        } catch (error) {
+            console.warn('Unable to load tasks for calendar:', error);
+        }
+
+        try {
+            if (typeof API !== 'undefined' && API.reminders && typeof API.reminders.list === 'function') {
+                const data = await API.reminders.list();
+                reminders = data.reminders || [];
+            }
+        } catch (error) {
+            console.warn('Unable to load reminders for calendar:', error);
+        }
+    }
+
+    async function loadSavedSchedule() {
+        let loadedBlocks = [];
+
+        // 1. Try to load from server database API first
+        try {
+            if (typeof API !== 'undefined' && API.schedule) {
+                if (typeof API.schedule.get === 'function') {
+                    const data = await API.schedule.get();
+                    loadedBlocks = data.blocks || [];
+                } else if (typeof API.schedule.list === 'function') {
+                    const data = await API.schedule.list();
+                    loadedBlocks = data.blocks || [];
+                }
+            }
+        } catch (error) {
+            console.warn('Could not load schedule from server, trying local storage...', error);
+        }
+
+        // 2. Fallback to localStorage if server did not return any blocks
+        if (!loadedBlocks || loadedBlocks.length === 0) {
+            try {
+                const localData = localStorage.getItem('study_schedule_blocks');
+                if (localData) {
+                    loadedBlocks = JSON.parse(localData);
+                }
+            } catch (e) {
+                console.error('Error loading schedule from local storage:', e);
+            }
+        }
+
+        if (loadedBlocks && loadedBlocks.length > 0) {
+            scheduleBlocks = loadedBlocks;
+            renderScheduleBlocks();
+            
+            // Show calendar interface and hide empty screen state
+            if (calendarEmpty) calendarEmpty.style.display = 'none';
+            if (calendarContent) calendarContent.style.display = 'flex';
+            if (statsContainer) statsContainer.style.display = 'flex';
+            if (btnSave) btnSave.style.display = 'inline-flex';
+        }
+    }
+
     function attachEventListeners() {
         btnGenerate.addEventListener('click', handleGenerate);
+        if (btnEmptyGenerate) {
+            btnEmptyGenerate.addEventListener('click', handleGenerate);
+        }
         btnReset.addEventListener('click', handleReset);
         btnSave.addEventListener('click', async () => {
             const originalText = btnSave.innerHTML;
@@ -91,6 +155,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const response = await API.schedule.save(scheduleBlocks);
+                
+                // Keep local storage synchronized
+                try {
+                    localStorage.setItem('study_schedule_blocks', JSON.stringify(scheduleBlocks));
+                } catch (e) {
+                    console.error(e);
+                }
+
                 showToast(response.message || 'Schedule saved successfully!', 'success');
             } catch (error) {
                 showToast(error.message, 'error');
@@ -330,6 +402,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Logic ---
 
+    function showEmptyCalendarState() {
+        document.querySelectorAll('.schedule-block').forEach(el => el.remove());
+        calendarContent.style.display = 'none';
+        statsContainer.style.display = 'none';
+        btnSave.style.display = 'none';
+        calendarEmpty.style.display = 'flex';
+    }
+
     async function handleGenerate() {
         const originalText = btnGenerate.innerHTML;
         btnGenerate.innerHTML = `<div class="spinner" style="margin: 0 auto; border-color: rgba(255,255,255,0.3); border-top-color: white;"></div>`;
@@ -347,8 +427,16 @@ document.addEventListener('DOMContentLoaded', () => {
             scheduleBlocks = data.blocks || [];
             
             if (scheduleBlocks.length === 0) {
+                showEmptyCalendarState();
                 showToast("Couldn't generate a schedule. Please add more availability.", "warning");
                 return;
+            }
+
+            // Save generated blocks instantly to localStorage
+            try {
+                localStorage.setItem('study_schedule_blocks', JSON.stringify(scheduleBlocks));
+            } catch (e) {
+                console.error(e);
             }
 
             renderScheduleBlocks();
@@ -425,6 +513,114 @@ document.addEventListener('DOMContentLoaded', () => {
         const mins = totalMinutes % 60;
         statTotalTime.textContent = `${hours}h ${mins > 0 ? mins + 'm' : ''}`;
         statBlocks.textContent = scheduleBlocks.length;
+
+        // Render Tasks and Reminders over study blocks
+        renderTasksAndRemindersOnCalendar();
+    }
+
+    function renderTasksAndRemindersOnCalendar() {
+        // Clear any existing calendar items for tasks/reminders to avoid duplicates
+        document.querySelectorAll('.schedule-item--task, .schedule-item--reminder').forEach(el => el.remove());
+
+        // Render Tasks
+        tasks.forEach(task => {
+            if (!task.deadline || task.status === 'done') return;
+
+            // Parse deadline safely
+            const deadlineStr = task.deadline.replace(' ', 'T');
+            const deadlineDate = new Date(deadlineStr);
+            if (isNaN(deadlineDate.getTime())) return;
+
+            const day = deadlineDate.getDay();
+            const hour = deadlineDate.getHours();
+            const min = deadlineDate.getMinutes();
+
+            // Only show items within standard calendar display hours (6 AM to 10 PM)
+            if (hour < 6 || hour > 22) return;
+
+            const col = document.querySelector(`.calendar__day-column[data-day="${day}"]`);
+            if (!col) return;
+
+            const topOffset = ((hour - 6) * 60) + min;
+
+            const taskEl = document.createElement('div');
+            taskEl.className = 'schedule-block schedule-item--task';
+            taskEl.style.top = `${topOffset}px`;
+            taskEl.style.height = '35px'; // Compact static size
+            taskEl.style.backgroundColor = 'rgba(99, 102, 241, 0.15)'; // Semi-transparent indigo
+            taskEl.style.borderColor = task.course_color || '#6366f1';
+            taskEl.style.color = '#ffffff';
+            taskEl.style.zIndex = '5';
+            taskEl.style.padding = '4px 8px';
+            taskEl.style.borderRadius = 'var(--radius-sm)';
+            taskEl.style.fontSize = 'var(--fs-xs)';
+            taskEl.style.borderLeft = `4px solid ${task.course_color || '#6366f1'}`;
+            taskEl.style.cursor = 'default';
+            taskEl.style.boxShadow = 'var(--shadow-sm)';
+            taskEl.style.pointerEvents = 'none'; // Avoid drag event interference
+
+            taskEl.innerHTML = `
+                <div class="schedule-block__title" style="font-weight: var(--fw-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    📌 Task: ${escapeHtml(task.title)}
+                </div>
+            `;
+
+            col.appendChild(taskEl);
+        });
+
+        // Render Reminders
+        reminders.forEach(reminder => {
+            if (!reminder.remind_at) return;
+
+            // Parse remind_at date safely
+            const remindStr = reminder.remind_at.replace(' ', 'T');
+            const remindDate = new Date(remindStr);
+            if (isNaN(remindDate.getTime())) return;
+
+            const day = remindDate.getDay();
+            const hour = remindDate.getHours();
+            const min = remindDate.getMinutes();
+
+            if (hour < 6 || hour > 22) return;
+
+            const col = document.querySelector(`.calendar__day-column[data-day="${day}"]`);
+            if (!col) return;
+
+            const topOffset = ((hour - 6) * 60) + min;
+
+            const reminderEl = document.createElement('div');
+            reminderEl.className = 'schedule-block schedule-item--reminder';
+            reminderEl.style.top = `${topOffset}px`;
+            reminderEl.style.height = '35px'; // Compact static size
+            reminderEl.style.backgroundColor = 'rgba(245, 158, 11, 0.15)'; // Semi-transparent amber
+            reminderEl.style.borderColor = '#f59e0b';
+            reminderEl.style.color = '#ffffff';
+            reminderEl.style.zIndex = '6';
+            reminderEl.style.padding = '4px 8px';
+            reminderEl.style.borderRadius = 'var(--radius-sm)';
+            reminderEl.style.fontSize = 'var(--fs-xs)';
+            reminderEl.style.borderLeft = '4px solid #f59e0b';
+            reminderEl.style.cursor = 'default';
+            reminderEl.style.boxShadow = 'var(--shadow-sm)';
+            reminderEl.style.pointerEvents = 'none';
+
+            reminderEl.innerHTML = `
+                <div class="schedule-block__title" style="font-weight: var(--fw-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    🔔 Alert: ${escapeHtml(reminder.message)}
+                </div>
+            `;
+
+            col.appendChild(reminderEl);
+        });
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     // --- Drag and Drop Logic ---
@@ -474,7 +670,6 @@ document.addEventListener('DOMContentLoaded', () => {
             dragState.blockEl.style.top = `${newTop}px`;
 
             // Handle horizontal move across days
-            // We temporarily hide the dragged element from pointer events so elementFromPoint sees what's under it
             const oldPointerEvents = dragState.blockEl.style.pointerEvents;
             dragState.blockEl.style.pointerEvents = 'none';
             const hoveredCol = document.elementFromPoint(e.clientX, e.clientY)?.closest('.calendar__day-column');
@@ -508,7 +703,14 @@ document.addEventListener('DOMContentLoaded', () => {
             blockObj.start_time = `${String(Math.floor(totalStartMins / 60)).padStart(2, '0')}:${String(totalStartMins % 60).padStart(2, '0')}`;
             blockObj.end_time = `${String(Math.floor(totalEndMins / 60)).padStart(2, '0')}:${String(totalEndMins % 60).padStart(2, '0')}`;
 
-            // If it resized into/out of compact view, or changed times, re-render to ensure text is correct
+            // Save modified blocks to localStorage instantly
+            try {
+                localStorage.setItem('study_schedule_blocks', JSON.stringify(scheduleBlocks));
+            } catch (e) {
+                console.error(e);
+            }
+
+            // Re-render to ensure text and displays are correct
             renderScheduleBlocks();
         }
 
@@ -519,13 +721,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleReset() {
         scheduleBlocks = [];
-        document.querySelectorAll('.schedule-block').forEach(el => el.remove());
-        
-        calendarContent.style.display = 'none';
-        statsContainer.style.display = 'none';
-        btnSave.style.display = 'none';
-        calendarEmpty.style.display = 'flex';
-        
+        try {
+            localStorage.removeItem('study_schedule_blocks');
+        } catch (e) {
+            console.error(e);
+        }
+        showEmptyCalendarState();
         showToast('Schedule cleared.');
     }
 });

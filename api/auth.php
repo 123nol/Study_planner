@@ -45,8 +45,8 @@ if ($method === 'POST') {
             jsonError('Invalid email format');
         }
 
-        if (strlen($password) < 6) {
-            jsonError('Password must be at least 6 characters');
+        if (strlen($password) < 8 || !preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
+            jsonError('Password must be at least 8 characters long and contain both letters and numbers.');
         }
 
         try {
@@ -91,6 +91,10 @@ if ($method === 'POST') {
         $missing = validateRequired(['email' => $email, 'password' => $password], ['email', 'password']);
         if (!empty($missing)) {
             jsonError('Email and password are required', 400, ['missing' => $missing]);
+        }
+
+        if (!validateEmail($email)) {
+            jsonError('Invalid email format');
         }
 
         try {

@@ -27,6 +27,7 @@
 
     let tasks = [];
     let courses = [];
+    const estimateOptions = [15, 30, 45, 60, 90, 120, 180];
 
     init();
 
@@ -221,7 +222,7 @@
             taskDescriptionInput.value = task.description || '';
             taskPriorityInput.value = task.priority;
             taskStatusInput.value = task.status;
-            taskEstimateInput.value = task.estimated_minutes || 60;
+            taskEstimateInput.value = normalizeEstimateMinutes(task.estimated_minutes || 60);
             if (task.deadline) {
                 const deadline = new Date(task.deadline);
                 taskDeadlineInput.value = deadline.toISOString().slice(0, 16);
@@ -249,6 +250,26 @@
         taskCourseInput.value = '';
     }
 
+    function normalizeEstimateMinutes(value) {
+        const numericValue = parseInt(value, 10);
+        if (Number.isNaN(numericValue)) {
+            return '60';
+        }
+
+        let closest = estimateOptions[0];
+        let smallestDelta = Math.abs(closest - numericValue);
+
+        estimateOptions.forEach(option => {
+            const delta = Math.abs(option - numericValue);
+            if (delta < smallestDelta) {
+                closest = option;
+                smallestDelta = delta;
+            }
+        });
+
+        return String(closest);
+    }
+
     async function handleTaskFormSubmit(event) {
         event.preventDefault();
         const values = {
@@ -257,7 +278,7 @@
             priority: parseInt(taskPriorityInput.value, 10),
             status: taskStatusInput.value,
             deadline: taskDeadlineInput.value ? taskDeadlineInput.value.replace('T', ' ') : '',
-            estimated_minutes: sanitizeInt(taskEstimateInput.value),
+            estimated_minutes: sanitizeInt(taskEstimateInput.value) || 60,
             description: taskDescriptionInput.value.trim(),
         };
 

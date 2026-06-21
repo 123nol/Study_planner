@@ -2,7 +2,9 @@
 require_once __DIR__ . '/../config/app.php';
 
 if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    $loginPath = str_contains($scriptName, '/pages/') ? 'login.php' : 'pages/login.php';
+    header('Location: ' . $loginPath);
     exit;
 }
 

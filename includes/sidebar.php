@@ -1,5 +1,13 @@
 <?php
 $currentPage = basename($_SERVER['PHP_SELF']);
+$scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+$isPagesContext = str_contains($scriptName, '/pages/');
+
+$dashboardHref = $isPagesContext ? '../index.php' : 'index.php';
+$scheduleHref = $isPagesContext ? 'schedule.php' : 'pages/schedule.php';
+$tasksHref = $isPagesContext ? 'tasks.php' : 'pages/tasks.php';
+$remindersHref = $isPagesContext ? 'reminders.php' : 'pages/reminders.php';
+$profileHref = $isPagesContext ? 'profile.php' : 'pages/profile.php';
 ?>
 <aside class="sidebar">
     <div class="sidebar__brand">
@@ -18,23 +26,23 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     </div>
 
     <nav class="sidebar__nav">
-        <a href="../index.php" class="sidebar__link <?= $currentPage === 'index.php' ? 'active' : '' ?>">
+        <a href="<?= htmlspecialchars($dashboardHref, ENT_QUOTES, 'UTF-8') ?>" class="sidebar__link <?= $currentPage === 'index.php' ? 'active' : '' ?>">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             Dashboard
         </a>
-        <a href="schedule.php" class="sidebar__link <?= $currentPage === 'schedule.php' ? 'active' : '' ?>">
+        <a href="<?= htmlspecialchars($scheduleHref, ENT_QUOTES, 'UTF-8') ?>" class="sidebar__link <?= $currentPage === 'schedule.php' ? 'active' : '' ?>">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
             Schedule
         </a>
-        <a href="tasks.php" class="sidebar__link <?= $currentPage === 'tasks.php' ? 'active' : '' ?>">
+        <a href="<?= htmlspecialchars($tasksHref, ENT_QUOTES, 'UTF-8') ?>" class="sidebar__link <?= $currentPage === 'tasks.php' ? 'active' : '' ?>">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
             Tasks
         </a>
-        <a href="reminders.php" class="sidebar__link <?= $currentPage === 'reminders.php' ? 'active' : '' ?>">
+        <a href="<?= htmlspecialchars($remindersHref, ENT_QUOTES, 'UTF-8') ?>" class="sidebar__link <?= $currentPage === 'reminders.php' ? 'active' : '' ?>">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
             Reminders
         </a>
-        <a href="profile.php" class="sidebar__link <?= $currentPage === 'profile.php' ? 'active' : '' ?>">
+        <a href="<?= htmlspecialchars($profileHref, ENT_QUOTES, 'UTF-8') ?>" class="sidebar__link <?= $currentPage === 'profile.php' ? 'active' : '' ?>">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             Profile
         </a>

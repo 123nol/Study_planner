@@ -106,13 +106,18 @@
             </div>
 
             <div class="calendar" id="calendar">
-                <div class="calendar__empty" id="calendar-empty">
-                    <svg class="calendar__empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    <h3 class="calendar__empty-title">Ready to Plan?</h3>
-                    <p class="calendar__empty-text">Select your available times and adjust your preferences, then click Generate Schedule.</p>
+                <div class="calendar__empty" id="calendar-empty" style="display: flex; align-items: center; justify-content: center; min-height: 100%; padding: var(--space-6);">
+                    <div class="card" style="max-width: 520px; width: 100%; text-align: center; padding: var(--space-8); background: rgba(26, 26, 46, 0.92); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: var(--shadow-lg);">
+                        <div style="width: 72px; height: 72px; margin: 0 auto var(--space-4); border-radius: 24px; display: grid; place-items: center; background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.18); color: var(--accent-indigo);">
+                            <svg class="calendar__empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        </div>
+                        <h3 class="calendar__empty-title">No Schedule Generated Yet</h3>
+                        <p class="calendar__empty-text" style="margin: var(--space-3) auto var(--space-5); max-width: 34ch;">Pick your availability and preferences, then generate a schedule to fill this calendar.</p>
+                        <button type="button" class="btn btn-primary" id="btn-empty-generate">Generate Schedule</button>
+                    </div>
                 </div>
 
-                <div id="calendar-content" style="display: none; height: 100%; display: flex; flex-direction: column;">
+                <div id="calendar-content" style="display: none; height: 100%; flex-direction: column;">
                     <div class="calendar__header" id="calendar-header">
                         <div class="calendar__corner">GMT+3</div>
                         <!-- Days generated via JS -->

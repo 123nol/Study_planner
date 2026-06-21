@@ -245,7 +245,7 @@ if (isset($_SESSION['user_id'])) {
 
             <div class="form-group">
                 <label for="password" class="form-label">Password</label>
-                <input type="password" id="password" class="form-control" placeholder="Minimum 6 characters" required minlength="6" autocomplete="new-password">
+                <input type="password" id="password" class="form-control" placeholder="Min 8 chars, letters & numbers" required minlength="8" autocomplete="new-password" pattern="(?=.*[0-9])(?=.*[A-Za-z]).{8,}">
             </div>
 
             <div class="form-group">
