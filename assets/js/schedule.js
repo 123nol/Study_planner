@@ -141,10 +141,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 3. Cross-reference cached blocks with current active courses to prevent cross-account display
+        // 3. Validate block matching safely
         if (loadedBlocks && loadedBlocks.length > 0) {
-            const cachedCourseIds = new Set(loadedBlocks.map(b => b.course_id).filter(id => id !== null && id !== undefined));
-            const currentUserCourseIds = new Set(courses.map(c => c.id));
+            // Normalize IDs to strings to prevent string-vs-number type mismatches
+            const cachedCourseIds = new Set(
+                loadedBlocks.map(b => String(b.course_id)).filter(id => id !== 'null' && id !== 'undefined' && id !== '')
+            );
+            const currentUserCourseIds = new Set(
+                courses.map(c => String(c.id))
+            );
 
             let isMismatch = false;
             if (courses.length === 0 && loadedBlocks.length > 0) {
@@ -159,8 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (isMismatch) {
+                // DO NOT delete it destructively. Simply clear the local variable so we don't render it.
+                // This keeps the backup safe in localStorage if they log back into the original account!
                 loadedBlocks = [];
-                localStorage.removeItem('study_schedule_blocks');
             }
         }
 
