@@ -1,3 +1,9 @@
+/**
+ * ============================================
+ * SCHEDULE GENERATOR LOGIC
+ * ============================================
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
     
     // --- State ---
@@ -102,24 +108,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadSavedSchedule() {
         let loadedBlocks = [];
+        let loadedFromAPI = false;
 
         // 1. Try to load from server database API first
         try {
             if (typeof API !== 'undefined' && API.schedule) {
+                let response = null;
                 if (typeof API.schedule.get === 'function') {
-                    const data = await API.schedule.get();
-                    loadedBlocks = data.blocks || [];
+                    response = await API.schedule.get();
                 } else if (typeof API.schedule.list === 'function') {
-                    const data = await API.schedule.list();
-                    loadedBlocks = data.blocks || [];
+                    response = await API.schedule.list();
+                }
+                
+                if (response && response.blocks) {
+                    loadedBlocks = response.blocks;
+                    loadedFromAPI = true;
                 }
             }
         } catch (error) {
-            console.warn('Could not load schedule from server, trying local storage...', error);
+            console.warn('Could not load schedule from server database, trying local storage...', error);
         }
 
-        // 2. Fallback to localStorage if server did not return any blocks
-        if (!loadedBlocks || loadedBlocks.length === 0) {
+        // 2. Fallback to localStorage only if the API failed/doesn't exist
+        if (!loadedFromAPI) {
             try {
                 const localData = localStorage.getItem('study_schedule_blocks');
                 if (localData) {
@@ -127,6 +138,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (e) {
                 console.error('Error loading schedule from local storage:', e);
+            }
+        }
+
+        // 3. Cross-reference cached blocks with current active courses to prevent cross-account display
+        if (loadedBlocks && loadedBlocks.length > 0) {
+            const cachedCourseIds = new Set(loadedBlocks.map(b => b.course_id).filter(id => id !== null && id !== undefined));
+            const currentUserCourseIds = new Set(courses.map(c => c.id));
+
+            let isMismatch = false;
+            if (courses.length === 0 && loadedBlocks.length > 0) {
+                isMismatch = true;
+            } else {
+                for (let cid of cachedCourseIds) {
+                    if (!currentUserCourseIds.has(cid)) {
+                        isMismatch = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isMismatch) {
+                loadedBlocks = [];
+                localStorage.removeItem('study_schedule_blocks');
             }
         }
 
@@ -139,6 +173,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (calendarContent) calendarContent.style.display = 'flex';
             if (statsContainer) statsContainer.style.display = 'flex';
             if (btnSave) btnSave.style.display = 'inline-flex';
+        } else {
+            showEmptyCalendarState();
         }
     }
 
@@ -412,6 +448,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleGenerate() {
         const originalText = btnGenerate.innerHTML;
+
+        // Warning to prevent empty generation attempts
+        if (courses.length === 0) {
+            showToast("Please add at least one course first before generating a schedule.", "warning");
+            return;
+        }
+
         btnGenerate.innerHTML = `<div class="spinner" style="margin: 0 auto; border-color: rgba(255,255,255,0.3); border-top-color: white;"></div>`;
         btnGenerate.disabled = true;
 
@@ -535,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const hour = deadlineDate.getHours();
             const min = deadlineDate.getMinutes();
 
-            // Only show items within standard calendar display hours (6 AM to 10 PM)
+            // We only show items between 6 AM and 10 PM on calendar
             if (hour < 6 || hour > 22) return;
 
             const col = document.querySelector(`.calendar__day-column[data-day="${day}"]`);
@@ -547,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
             taskEl.className = 'schedule-block schedule-item--task';
             taskEl.style.top = `${topOffset}px`;
             taskEl.style.height = '35px'; // Compact static size
-            taskEl.style.backgroundColor = 'rgba(99, 102, 241, 0.15)'; // Semi-transparent indigo
+            taskEl.style.backgroundColor = 'rgba(99, 102, 241, 0.15)'; // indigo
             taskEl.style.borderColor = task.course_color || '#6366f1';
             taskEl.style.color = '#ffffff';
             taskEl.style.zIndex = '5';
@@ -557,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
             taskEl.style.borderLeft = `4px solid ${task.course_color || '#6366f1'}`;
             taskEl.style.cursor = 'default';
             taskEl.style.boxShadow = 'var(--shadow-sm)';
-            taskEl.style.pointerEvents = 'none'; // Avoid drag event interference
+            taskEl.style.pointerEvents = 'none'; // prevent block drag interference
 
             taskEl.innerHTML = `
                 <div class="schedule-block__title" style="font-weight: var(--fw-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -572,7 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reminders.forEach(reminder => {
             if (!reminder.remind_at) return;
 
-            // Parse remind_at date safely
+            // Parse remind_at safely
             const remindStr = reminder.remind_at.replace(' ', 'T');
             const remindDate = new Date(remindStr);
             if (isNaN(remindDate.getTime())) return;
@@ -592,7 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
             reminderEl.className = 'schedule-block schedule-item--reminder';
             reminderEl.style.top = `${topOffset}px`;
             reminderEl.style.height = '35px'; // Compact static size
-            reminderEl.style.backgroundColor = 'rgba(245, 158, 11, 0.15)'; // Semi-transparent amber
+            reminderEl.style.backgroundColor = 'rgba(245, 158, 11, 0.15)'; // amber
             reminderEl.style.borderColor = '#f59e0b';
             reminderEl.style.color = '#ffffff';
             reminderEl.style.zIndex = '6';
@@ -710,7 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error(e);
             }
 
-            // Re-render to ensure text and displays are correct
+            // Re-render to ensure text and display are correct
             renderScheduleBlocks();
         }
 

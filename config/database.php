@@ -8,7 +8,7 @@ define('DB_HOST', 'localhost');
 define('DB_PORT', '3306');
 define('DB_NAME', 'smart_study_planner');
 define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_PASS', '2458');
 define('DB_CHARSET', 'utf8mb4');
 
 /**
